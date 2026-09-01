@@ -7,15 +7,15 @@ import (
 )
 
 type Config struct {
-	Port             string
-	DatabasePath     string
-	WorkerCount      int
-	QueueCapacity    int
-	DefaultRetries   int
-	RetryBaseDelay   time.Duration
-	RetryMaxDelay    time.Duration
-	ShutdownTimeout  time.Duration
-	LogLevel         string
+	Port            string
+	DatabasePath    string
+	WorkerCount     int
+	QueueCapacity   int
+	DefaultRetries  int
+	RetryBaseDelay  time.Duration
+	RetryMaxDelay   time.Duration
+	ShutdownTimeout time.Duration
+	LogLevel        string
 }
 
 func Load() *Config {
