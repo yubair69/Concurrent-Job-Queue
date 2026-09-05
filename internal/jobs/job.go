@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type JobStatus string
@@ -20,6 +22,7 @@ const (
 type Job struct {
 	ID          string          `json:"id"`
 	Type        string          `json:"type"`
+	GroupID     string          `json:"group_id,omitempty"`
 	Payload     json.RawMessage `json:"payload"`
 	Priority    int             `json:"priority"`
 	Status      JobStatus       `json:"status"`
@@ -61,4 +64,26 @@ func (j *Job) TransitionTo(newStatus JobStatus) error {
 	j.Status = newStatus
 	j.UpdatedAt = time.Now().UTC()
 	return nil
+}
+
+func NewJob(jobType string, payload json.RawMessage, priority, maxAttempts int) (*Job, error) {
+	if jobType == "" {
+		return nil, errors.New("job type cannot be empty")
+	}
+	if payload == nil {
+		payload = json.RawMessage("{}")
+	}
+	now := time.Now().UTC()
+	return &Job{
+		ID:          uuid.New().String(),
+		Type:        jobType,
+		Payload:     payload,
+		Priority:    priority,
+		Status:      StatusQueued,
+		Attempts:    0,
+		MaxAttempts: maxAttempts,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		RunAt:       now,
+	}, nil
 }

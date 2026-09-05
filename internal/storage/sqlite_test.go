@@ -120,3 +120,63 @@ func TestSQLiteStore_LifecycleAndPersistence(t *testing.T) {
 		t.Errorf("expected job-456 (higher priority), got %s", next.ID)
 	}
 }
+
+func TestSQLiteStore_RestartRecovery(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "gotask-recovery-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "recovery.db")
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	// First instance: create a job and leave it running (simulating crash)
+	store1, err := NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+
+	runningJob := &jobs.Job{
+		ID:        "recovery-job-1",
+		Type:      "sleep",
+		Payload:   []byte(`{"duration_ms": 1000}`),
+		Priority:  5,
+		Status:    jobs.StatusRunning,
+		CreatedAt: now,
+		UpdatedAt: now,
+		RunAt:     now,
+	}
+	if err := store1.Create(ctx, runningJob); err != nil {
+		t.Fatalf("failed to create job: %v", err)
+	}
+
+	// Simulate process restart: close store and reopen
+	if err := store1.Close(); err != nil {
+		t.Fatalf("failed to close store: %v", err)
+	}
+
+	store2, err := NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to reopen store: %v", err)
+	}
+	defer store2.Close()
+
+	// Recovery: incomplete jobs should be requeued
+	if err := store2.RecoverIncompleteJobs(ctx); err != nil {
+		t.Fatalf("failed to recover incomplete jobs: %v", err)
+	}
+
+	recovered, err := store2.GetByID(ctx, "recovery-job-1")
+	if err != nil {
+		t.Fatalf("failed to get recovered job: %v", err)
+	}
+
+	if recovered.Status != jobs.StatusQueued {
+		t.Errorf("expected recovered job status to be queued, got %s", recovered.Status)
+	}
+	if recovered.LastError != "recovered from process restart" {
+		t.Errorf("expected recovery error message, got %s", recovered.LastError)
+	}
+}

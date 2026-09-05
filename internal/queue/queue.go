@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/gotask/gotask/internal/jobs"
 )
@@ -58,6 +59,13 @@ func (h *priorityHeap) Pop() any {
 	return it
 }
 
+type Stats struct {
+	Depth    int
+	Enqueued int64
+	Dequeued int64
+	Capacity int
+}
+
 type PriorityQueue struct {
 	mu       sync.Mutex
 	cond     *sync.Cond
@@ -65,6 +73,8 @@ type PriorityQueue struct {
 	capacity int
 	seq      int64
 	closed   bool
+	enqueued int64
+	dequeued int64
 }
 
 func NewPriorityQueue(capacity int) *PriorityQueue {
@@ -127,6 +137,7 @@ func (pq *PriorityQueue) Enqueue(ctx context.Context, job *jobs.Job) error {
 		sequence: pq.seq,
 	}
 	heap.Push(&pq.items, it)
+	atomic.AddInt64(&pq.enqueued, 1)
 	pq.cond.Signal()
 
 	return nil
@@ -170,9 +181,21 @@ func (pq *PriorityQueue) Dequeue(ctx context.Context) (*jobs.Job, error) {
 	}
 
 	it := heap.Pop(&pq.items).(*item)
+	atomic.AddInt64(&pq.dequeued, 1)
 	pq.cond.Signal() // Signal producers that capacity is available
 
 	return it.job, nil
+}
+
+func (pq *PriorityQueue) Stats() Stats {
+	pq.mu.Lock()
+	defer pq.mu.Unlock()
+	return Stats{
+		Depth:    len(pq.items),
+		Enqueued: atomic.LoadInt64(&pq.enqueued),
+		Dequeued: atomic.LoadInt64(&pq.dequeued),
+		Capacity: pq.capacity,
+	}
 }
 
 func (pq *PriorityQueue) Close() {

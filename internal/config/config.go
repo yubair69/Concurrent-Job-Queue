@@ -16,6 +16,10 @@ type Config struct {
 	RetryMaxDelay   time.Duration
 	ShutdownTimeout time.Duration
 	LogLevel        string
+	UploadDir       string
+	OutputDir       string
+	StaticDir       string
+	MaxUploadMB     int
 }
 
 func Load() *Config {
@@ -29,6 +33,10 @@ func Load() *Config {
 		RetryMaxDelay:   getEnvAsDuration("GOTASK_RETRY_MAX_DELAY", 30*time.Second),
 		ShutdownTimeout: getEnvAsDuration("GOTASK_SHUTDOWN_TIMEOUT", 10*time.Second),
 		LogLevel:        getEnv("GOTASK_LOG_LEVEL", "info"),
+		UploadDir:       getEnv("PIXELFORGE_UPLOAD_DIR", "data/uploads"),
+		OutputDir:       getEnv("PIXELFORGE_OUTPUT_DIR", "data/outputs"),
+		StaticDir:       getEnv("PIXELFORGE_STATIC_DIR", "web/dist"),
+		MaxUploadMB:     getEnvAsInt("PIXELFORGE_MAX_UPLOAD_MB", 200),
 	}
 }
 

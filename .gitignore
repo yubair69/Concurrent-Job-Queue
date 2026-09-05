@@ -7,6 +7,9 @@
 *.so
 *.dylib
 
+# PixelForge uploaded and processed media
+/data/
+
 # Database
 *.db
 *.db-shm

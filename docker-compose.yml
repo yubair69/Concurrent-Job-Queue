@@ -1,0 +1,27 @@
+services:
+  gotask:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gotask-server
+    ports:
+      - "8080:8080"
+    environment:
+      GOTASK_PORT: "8080"
+      GOTASK_DB_PATH: "/var/lib/gotask/gotask.db"
+      GOTASK_WORKER_COUNT: "4"
+      GOTASK_QUEUE_CAPACITY: "1000"
+      GOTASK_DEFAULT_RETRIES: "3"
+      GOTASK_LOG_LEVEL: "info"
+    volumes:
+      - gotask-data:/var/lib/gotask
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  gotask-data:
